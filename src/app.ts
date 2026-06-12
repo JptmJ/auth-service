@@ -4,6 +4,9 @@ import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger";
+import { healthPage, homePage } from "./views/developerUX";
 
 import { env } from "./config/env";
 import routes from "./routes";
@@ -35,8 +38,24 @@ app.use("/api/auth", authLimiter);
 
 // Health check
 app.get("/health", (_req: Request, res: Response) => {
-  res.status(200).json({ status: "ok", service: "auth-service" });
+  const uptime = Math.floor(process.uptime());
+
+  res.send(healthPage(uptime));
 });
+
+// Landing page
+app.get("/", (_req, res) => {
+  res.send(homePage());
+});
+
+// Swagger JSON
+app.get("/swagger.json", (_req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerSpec);
+});
+
+// Swagger UI
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API routes
 app.use("/api", routes);
