@@ -1,4 +1,5 @@
 import swaggerJsdoc from "swagger-jsdoc";
+import path from "path";
 
 export const swaggerSpec = swaggerJsdoc({
     definition: {
@@ -38,5 +39,5 @@ export const swaggerSpec = swaggerJsdoc({
             },
         },
     },
-    apis: ["./src/routes/*.ts"],
+    apis: [path.join(__dirname, "../routes/*.{ts,js}")],
 });
