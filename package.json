@@ -1,12 +1,13 @@
 {
-  "name": "auth-service",
-  "version": "1.0.0",
-  "description": "Generic reusable Auth microservice (Node.js + TypeScript + MongoDB)",
+  "name": "common-auth-service",
+  "version": "2.0.0",
+  "description": "Central, multi-tenant authentication microservice (Node.js + TypeScript + MongoDB). One deployment, shared by every client project, each with its own dedicated database.",
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "create-tenant": "ts-node scripts/createTenant.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -33,6 +34,7 @@
     "@types/node": "^20.14.2",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
+    "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.5"
   }

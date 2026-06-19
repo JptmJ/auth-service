@@ -36,6 +36,16 @@ const authLimiter = rateLimit({
 });
 app.use("/api/auth", authLimiter);
 
+// Tighter limiter for the admin (tenant onboarding) endpoints
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: "Too many requests, please try again later.",
+});
+app.use("/api/admin", adminLimiter);
+
 // Health check
 app.get("/health", (_req: Request, res: Response) => {
   const uptime = Math.floor(process.uptime());

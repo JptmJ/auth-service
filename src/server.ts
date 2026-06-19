@@ -1,13 +1,28 @@
 import app from "./app";
-import { connectDB } from "./config/db";
+import { connectMasterDB } from "./config/db";
+import { closeAllTenantConnections } from "./config/dbManager";
 import { env } from "./config/env";
 
 const startServer = async () => {
-  await connectDB();
+  // Only the master (control-plane) DB connects at boot. Each client's own
+  // database is connected to lazily, the first time a request for that
+  // tenant arrives — see src/config/dbManager.ts.
+  await connectMasterDB();
 
-  app.listen(env.port, () => {
-    console.log(`🚀 Auth service running on port ${env.port} [${env.nodeEnv}]`);
+  const server = app.listen(env.port, () => {
+    console.log(`🚀 Common auth service running on port ${env.port} [${env.nodeEnv}]`);
   });
+
+  const shutdown = async (signal: string) => {
+    console.log(`\n${signal} received, shutting down gracefully...`);
+    server.close(async () => {
+      await closeAllTenantConnections();
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 };
 
 startServer().catch((error) => {

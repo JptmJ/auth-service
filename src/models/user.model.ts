@@ -1,8 +1,8 @@
-import { Schema, model, Document, Types } from "mongoose";
+import { Schema, Document, Types, Connection, Model } from "mongoose";
 
 export interface IUser extends Document {
   _id: Types.ObjectId;
-  appId: string; // identifies which application this user belongs to (multi-app support)
+  appId: string; // redundant audit copy of the tenant this record belongs to
   email: string;
   password: string;
   name: string;
@@ -13,7 +13,7 @@ export interface IUser extends Document {
   updatedAt: Date;
 }
 
-const userSchema = new Schema<IUser>(
+export const userSchema = new Schema<IUser>(
   {
     appId: {
       type: String,
@@ -53,7 +53,15 @@ const userSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-// A user's email must be unique per application, not globally
-userSchema.index({ appId: 1, email: 1 }, { unique: true });
+// Each tenant now has its own dedicated database, so a user's email only
+// needs to be unique WITHIN that database — no more compound appId+email.
+userSchema.index({ email: 1 }, { unique: true });
 
-export const User = model<IUser>("User", userSchema);
+/**
+ * Models in Mongoose are bound to a specific Connection. Since every tenant
+ * has its own Connection (see config/dbManager.ts), we can't export a single
+ * pre-built `User` model anymore — we build/reuse one per connection here.
+ */
+export const getUserModel = (connection: Connection): Model<IUser> => {
+  return (connection.models.User as Model<IUser>) || connection.model<IUser>("User", userSchema);
+};

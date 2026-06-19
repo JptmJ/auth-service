@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authController } from "../controllers/auth.controller";
 import { validate } from "../middleware/validate";
 import { authenticate } from "../middleware/auth";
+import { resolveTenant } from "../middleware/tenant";
 
 import {
   registerSchema,
@@ -11,6 +12,10 @@ import {
 } from "../validators/auth.validator";
 
 const router = Router();
+
+// Every endpoint below needs to know which client's database to use,
+// resolved from the X-Tenant-Id header.
+router.use(resolveTenant);
 
 /**
  * @swagger
@@ -25,6 +30,8 @@ const router = Router();
  *   post:
  *     summary: Register a new user
  *     tags: [Authentication]
+ *     security:
+ *       - tenantId: []
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -41,6 +48,8 @@ router.post(
  *   post:
  *     summary: Login user
  *     tags: [Authentication]
+ *     security:
+ *       - tenantId: []
  *     responses:
  *       200:
  *         description: Login successful
@@ -57,6 +66,8 @@ router.post(
  *   post:
  *     summary: Refresh access token
  *     tags: [Authentication]
+ *     security:
+ *       - tenantId: []
  *     responses:
  *       200:
  *         description: Token refreshed
@@ -73,6 +84,8 @@ router.post(
  *   post:
  *     summary: Logout user
  *     tags: [Authentication]
+ *     security:
+ *       - tenantId: []
  *     responses:
  *       200:
  *         description: Logout successful
@@ -90,6 +103,7 @@ router.post(
  *     summary: Get current user
  *     tags: [Authentication]
  *     security:
+ *       - tenantId: []
  *       - bearerAuth: []
  *     responses:
  *       200:

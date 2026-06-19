@@ -22,9 +22,20 @@ export const authenticate = (req: Request, _res: Response, next: NextFunction) =
     const token = authHeader.split(" ")[1];
     const decoded = verifyAccessToken(token);
 
+    // Defense in depth: even though the JWT secret is shared across
+    // tenants, a token issued for tenant A must never be usable against
+    // tenant B's database. If a tenant was already resolved (X-Tenant-Id
+    // header present), confirm it matches the token's own appId.
+    if (req.tenant && decoded.appId !== req.tenant.id) {
+      throw ApiError.unauthorized("Token does not belong to this tenant");
+    }
+
     req.user = decoded;
     next();
   } catch (error) {
+    if (error instanceof ApiError) {
+      return next(error);
+    }
     next(ApiError.unauthorized("Invalid or expired token"));
   }
 };

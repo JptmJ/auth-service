@@ -6,7 +6,8 @@ import { ApiError } from "../utils/apiError";
 export const authController = {
   async register(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await authService.register(req.body);
+      if (!req.tenant) throw ApiError.badRequest("Tenant not resolved");
+      const result = await authService.register(req.tenant.connection, req.tenant.id, req.body);
       return ApiResponse.success(res, 201, "User registered successfully", result);
     } catch (error) {
       next(error);
@@ -15,7 +16,8 @@ export const authController = {
 
   async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await authService.login(req.body);
+      if (!req.tenant) throw ApiError.badRequest("Tenant not resolved");
+      const result = await authService.login(req.tenant.connection, req.body);
       return ApiResponse.success(res, 200, "Login successful", result);
     } catch (error) {
       next(error);
@@ -24,8 +26,9 @@ export const authController = {
 
   async refresh(req: Request, res: Response, next: NextFunction) {
     try {
+      if (!req.tenant) throw ApiError.badRequest("Tenant not resolved");
       const { refreshToken } = req.body;
-      const result = await authService.refresh(refreshToken);
+      const result = await authService.refresh(req.tenant.connection, refreshToken);
       return ApiResponse.success(res, 200, "Token refreshed successfully", result);
     } catch (error) {
       next(error);
@@ -34,8 +37,9 @@ export const authController = {
 
   async logout(req: Request, res: Response, next: NextFunction) {
     try {
+      if (!req.tenant) throw ApiError.badRequest("Tenant not resolved");
       const { refreshToken } = req.body;
-      await authService.logout(refreshToken);
+      await authService.logout(req.tenant.connection, refreshToken);
       return ApiResponse.success(res, 200, "Logged out successfully");
     } catch (error) {
       next(error);
@@ -44,10 +48,9 @@ export const authController = {
 
   async me(req: Request, res: Response, next: NextFunction) {
     try {
-      if (!req.user) {
-        throw ApiError.unauthorized();
-      }
-      const profile = await authService.getProfile(req.user.userId);
+      if (!req.user) throw ApiError.unauthorized();
+      if (!req.tenant) throw ApiError.badRequest("Tenant not resolved");
+      const profile = await authService.getProfile(req.tenant.connection, req.user.userId);
       return ApiResponse.success(res, 200, "Profile fetched successfully", profile);
     } catch (error) {
       next(error);

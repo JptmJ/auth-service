@@ -1,0 +1,30 @@
+version: "3.8"
+
+# For local development only. In production, MASTER_MONGO_URI and each
+# tenant's dbUri will typically point to managed clusters (e.g. MongoDB
+# Atlas), not these containers.
+services:
+  mongo-master:
+    image: mongo:7
+    container_name: auth_master_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_master_data:/data/db
+
+  # Example of a SEPARATE database for one client project, simulating real
+  # per-client isolation locally. Add one of these per client you're testing
+  # with, or just reuse mongo-master with a different database name in the
+  # connection string (e.g. mongodb://mongo-master:27017/client_a) — both
+  # work, see README "Choosing how isolated each client's database is".
+  mongo-client-a:
+    image: mongo:7
+    container_name: client_a_db
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_client_a_data:/data/db
+
+volumes:
+  mongo_master_data:
+  mongo_client_a_data:

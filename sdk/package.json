@@ -1,0 +1,22 @@
+{
+  "name": "@yourorg/auth-client",
+  "version": "1.0.0",
+  "description": "Drop-in client for talking to the common auth service from any new project. Copy this folder into a new project (or publish it to a private npm registry and `npm install` it) so every project connects to the same auth service the same way.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.2",
+    "typescript": "^5.4.5"
+  },
+  "peerDependencies": {
+    "express": ">=4"
+  }
+}

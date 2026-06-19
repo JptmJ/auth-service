@@ -1,5 +1,6 @@
-import { User, IUser } from "../models/user.model";
-import { RefreshToken } from "../models/token.model";
+import { Connection } from "mongoose";
+import { IUser, getUserModel } from "../models/user.model";
+import { getRefreshTokenModel } from "../models/token.model";
 import { ApiError } from "../utils/apiError";
 import { hashPassword, comparePassword } from "../utils/password";
 import {
@@ -12,14 +13,12 @@ import {
 import { env } from "../config/env";
 
 interface RegisterInput {
-  appId: string;
   name: string;
   email: string;
   password: string;
 }
 
 interface LoginInput {
-  appId: string;
   email: string;
   password: string;
 }
@@ -39,7 +38,9 @@ const sanitizeUser = (user: IUser) => ({
   createdAt: user.createdAt,
 });
 
-const issueTokens = async (user: IUser): Promise<AuthTokens> => {
+const issueTokens = async (conn: Connection, user: IUser): Promise<AuthTokens> => {
+  const RefreshToken = getRefreshTokenModel(conn);
+
   const payload = {
     userId: user._id.toString(),
     appId: user.appId,
@@ -62,31 +63,36 @@ const issueTokens = async (user: IUser): Promise<AuthTokens> => {
 };
 
 export const authService = {
-  async register(input: RegisterInput) {
-    const existingUser = await User.findOne({ appId: input.appId, email: input.email });
+  // `tenantId` is the resolved X-Tenant-Id (req.tenant.id) — every method
+  // here receives the tenant's own Connection (req.tenant.connection) so
+  // all reads/writes go straight to that client's dedicated database.
+  async register(conn: Connection, tenantId: string, input: RegisterInput) {
+    const User = getUserModel(conn);
+
+    const existingUser = await User.findOne({ email: input.email });
 
     if (existingUser) {
-      throw ApiError.conflict("An account with this email already exists for this app");
+      throw ApiError.conflict("An account with this email already exists");
     }
 
     const hashedPassword = await hashPassword(input.password);
 
     const user = await User.create({
-      appId: input.appId,
+      appId: tenantId,
       name: input.name,
       email: input.email,
       password: hashedPassword,
     });
 
-    const tokens = await issueTokens(user);
+    const tokens = await issueTokens(conn, user);
 
     return { user: sanitizeUser(user), tokens };
   },
 
-  async login(input: LoginInput) {
-    const user = await User.findOne({ appId: input.appId, email: input.email }).select(
-      "+password"
-    );
+  async login(conn: Connection, input: LoginInput) {
+    const User = getUserModel(conn);
+
+    const user = await User.findOne({ email: input.email }).select("+password");
 
     if (!user) {
       throw ApiError.unauthorized("Invalid email or password");
@@ -102,12 +108,15 @@ export const authService = {
       throw ApiError.unauthorized("Invalid email or password");
     }
 
-    const tokens = await issueTokens(user);
+    const tokens = await issueTokens(conn, user);
 
     return { user: sanitizeUser(user), tokens };
   },
 
-  async refresh(refreshTokenInput: string) {
+  async refresh(conn: Connection, refreshTokenInput: string) {
+    const User = getUserModel(conn);
+    const RefreshToken = getRefreshTokenModel(conn);
+
     let decoded;
 
     try {
@@ -142,23 +151,22 @@ export const authService = {
     storedToken.revoked = true;
     await storedToken.save();
 
-    const tokens = await issueTokens(user);
+    const tokens = await issueTokens(conn, user);
 
     return { user: sanitizeUser(user), tokens };
   },
 
-  async logout(refreshTokenInput: string) {
+  async logout(conn: Connection, refreshTokenInput: string) {
+    const RefreshToken = getRefreshTokenModel(conn);
     const hashedToken = hashToken(refreshTokenInput);
 
-    await RefreshToken.updateOne(
-      { token: hashedToken },
-      { $set: { revoked: true } }
-    );
+    await RefreshToken.updateOne({ token: hashedToken }, { $set: { revoked: true } });
 
     return true;
   },
 
-  async getProfile(userId: string) {
+  async getProfile(conn: Connection, userId: string) {
+    const User = getUserModel(conn);
     const user = await User.findById(userId);
 
     if (!user) {
